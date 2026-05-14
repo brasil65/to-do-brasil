@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
-import { ListTodo, Filter, Search, Trash2, X } from "lucide-react";
+import StatsOverview from "@/components/StatsOverview";
+import { ListTodo, Filter, Search, Trash2, X, LayoutDashboard } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -38,7 +39,29 @@ const Index = () => {
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setTasks(data);
+      // Ordenação Inteligente: 
+      // 1. Pendentes antes de concluídas
+      // 2. Por prioridade (high > medium > low)
+      // 3. Por data (mais próximas primeiro)
+      const priorityMap: Record<string, number> = { high: 3, medium: 2, low: 1 };
+      
+      const sorted = [...data].sort((a, b) => {
+        if (a.status !== b.status) {
+          return a.status === "pending" ? -1 : 1;
+        }
+        if (a.status === "pending") {
+          if (a.priority !== b.priority) {
+            return priorityMap[b.priority] - priorityMap[a.priority];
+          }
+          if (a.due_date && b.due_date) {
+            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+          }
+          return a.due_date ? -1 : 1;
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      setTasks(sorted);
     }
     setLoading(false);
   };
@@ -68,12 +91,13 @@ const Index = () => {
   });
 
   const completedCount = tasks.filter(t => t.status === 'completed').length;
+  const pendingCount = tasks.length - completedCount;
 
   if (authLoading && loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
         <div className="w-full max-w-md space-y-6">
-          <Skeleton className="h-14 w-full rounded-2xl" />
+          <Skeleton className="h-40 w-full rounded-3xl" />
           <div className="space-y-4">
             <Skeleton className="h-24 w-full rounded-2xl" />
             <Skeleton className="h-20 w-full rounded-2xl" />
@@ -101,6 +125,12 @@ const Index = () => {
       </header>
 
       <main className="max-w-md mx-auto px-4 pt-6 space-y-8">
+        <StatsOverview 
+          total={tasks.length} 
+          completed={completedCount} 
+          pending={pendingCount} 
+        />
+
         <div className="relative group">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
           <Input 
@@ -122,7 +152,7 @@ const Index = () => {
         <section className="space-y-3">
           <div className="flex items-center gap-2 px-1">
             <div className="h-4 w-1 bg-primary rounded-full" />
-            <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Planejar meu dia</h2>
+            <h2 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">Adicionar Tarefa</h2>
           </div>
           <TaskForm onTaskCreated={fetchTasks} />
         </section>
@@ -131,15 +161,10 @@ const Index = () => {
           <div className="flex flex-col gap-4 px-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Tarefas</h2>
-                <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full font-bold">
-                  {tasks.length}
-                </span>
+                <LayoutDashboard className="h-4 w-4 text-primary" />
+                <h2 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">Minha Lista</h2>
               </div>
               <div className="flex items-center gap-4">
-                <p className="text-xs text-muted-foreground font-medium">
-                  {completedCount}/{tasks.length}
-                </p>
                 {completedCount > 0 && (
                   <Button 
                     variant="ghost" 
@@ -148,7 +173,7 @@ const Index = () => {
                     className="h-7 text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 uppercase tracking-wider px-2"
                   >
                     <Trash2 className="h-3 w-3 mr-1" />
-                    Limpar
+                    Limpar Feitas
                   </Button>
                 )}
               </div>
@@ -158,7 +183,7 @@ const Index = () => {
               <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-900 p-1 h-11 rounded-xl">
                 <TabsTrigger value="all" className="rounded-lg text-xs font-semibold">Todas</TabsTrigger>
                 <TabsTrigger value="pending" className="rounded-lg text-xs font-semibold">Pendentes</TabsTrigger>
-                <TabsTrigger value="completed" className="rounded-lg text-xs font-semibold">Feitas</TabsTrigger>
+                <TabsTrigger value="completed" className="rounded-lg text-xs font-semibold">Concluídas</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -175,13 +200,13 @@ const Index = () => {
                 <div className="bg-slate-50 dark:bg-slate-800/50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Filter className="h-7 w-7 text-slate-300 dark:text-slate-600" />
                 </div>
-                <h3 className="text-slate-900 dark:text-white font-bold mb-1">Nada por aqui</h3>
+                <h3 className="text-slate-900 dark:text-white font-bold mb-1">Fim da lista</h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm max-w-[200px] mx-auto">
                   {search 
                     ? `Nenhuma tarefa encontrada para "${search}"`
                     : filter === "all" 
-                    ? "Sua lista de tarefas está vazia." 
-                    : `Não há tarefas ${filter === "pending" ? "pendentes" : "concluídas"} no momento.`}
+                    ? "Você concluiu tudo! Tempo de descansar." 
+                    : `Sem tarefas ${filter === "pending" ? "pendentes" : "concluídas"}.`}
                 </p>
               </div>
             )}

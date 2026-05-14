@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar, Pencil, Flag, Tag } from "lucide-react";
-import { format } from "date-fns";
+import { Trash2, Calendar, Pencil, Flag, AlertCircle } from "lucide-react";
+import { format, isPast, isToday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { showSuccess, showError } from "@/utils/toast";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,9 @@ const CATEGORIES: Record<string, { label: string, color: string }> = {
 const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const isCompleted = task.status === "completed";
+  
+  const dueDate = task.due_date ? new Date(task.due_date) : null;
+  const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate) && !isCompleted;
 
   const toggleStatus = async () => {
     const newStatus = isCompleted ? "pending" : "completed";
@@ -70,14 +73,17 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
 
   return (
     <>
-      <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 group transition-all hover:shadow-md animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className={cn(
+        "flex items-center gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border group transition-all hover:shadow-md animate-in fade-in slide-in-from-bottom-2 duration-300",
+        isOverdue ? "border-rose-200 dark:border-rose-900/30 bg-rose-50/30 dark:bg-rose-900/5" : "border-slate-100 dark:border-slate-800"
+      )}>
         <Checkbox
           checked={isCompleted}
           onCheckedChange={toggleStatus}
           className="h-6 w-6 rounded-full border-2 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
         />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
+          <div className="flex items-center flex-wrap gap-1.5 mb-0.5">
             <p className={cn(
               "text-base font-semibold truncate transition-all",
               isCompleted ? "text-slate-400 dark:text-slate-600 line-through opacity-60" : "text-slate-900 dark:text-slate-100"
@@ -89,12 +95,21 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
                 {currentCategory.label}
               </span>
             )}
+            {isOverdue && (
+              <span className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-tighter bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 px-1.5 py-0.5 rounded-md">
+                <AlertCircle className="h-2 w-2" />
+                Atrasado
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3">
-            {task.due_date && (
-              <div className="flex items-center text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            {dueDate && (
+              <div className={cn(
+                "flex items-center text-[10px] font-medium uppercase tracking-wider",
+                isOverdue ? "text-rose-500" : "text-slate-400 dark:text-slate-500"
+              )}>
                 <Calendar className="h-3 w-3 mr-1" />
-                {format(new Date(task.due_date), "dd/MM")}
+                {format(dueDate, "dd/MM")}
               </div>
             )}
             <div className={cn("flex items-center text-[10px] font-bold uppercase tracking-wider", currentPriority.color)}>
