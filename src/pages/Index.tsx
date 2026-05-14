@@ -5,9 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
-import { ListTodo, Filter } from "lucide-react";
+import { ListTodo, Filter, Search, Trash2, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { showSuccess, showError } from "@/utils/toast";
+import { Button } from "@/components/ui/button";
 
 interface Task {
   id: string;
@@ -15,6 +19,7 @@ interface Task {
   status: string;
   due_date: string | null;
   priority: string;
+  category?: string;
 }
 
 type FilterStatus = "all" | "pending" | "completed";
@@ -24,6 +29,7 @@ const Index = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>("all");
+  const [search, setSearch] = useState("");
 
   const fetchTasks = async () => {
     const { data, error } = await supabase
@@ -37,18 +43,39 @@ const Index = () => {
     setLoading(false);
   };
 
+  const clearCompleted = async () => {
+    const { error } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("status", "completed");
+
+    if (error) {
+      showError("Erro ao limpar tarefas");
+    } else {
+      showSuccess("Tarefas concluídas removidas");
+      fetchTasks();
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
   }, [user]);
 
+  const filteredTasks = tasks.filter(task => {
+    const matchesFilter = filter === "all" || task.status === filter;
+    const matchesSearch = task.title.toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const completedCount = tasks.filter(t => t.status === 'completed').length;
+
   if (authLoading && loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
         <div className="w-full max-w-md space-y-6">
           <Skeleton className="h-14 w-full rounded-2xl" />
           <div className="space-y-4">
             <Skeleton className="h-24 w-full rounded-2xl" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
             <Skeleton className="h-20 w-full rounded-2xl" />
           </div>
         </div>
@@ -56,34 +83,46 @@ const Index = () => {
     );
   }
 
-  const filteredTasks = tasks.filter(task => {
-    if (filter === "all") return true;
-    return task.status === filter;
-  });
-
-  const completedCount = tasks.filter(t => t.status === 'completed').length;
-
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b px-4 py-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 transition-colors duration-300">
+      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b dark:border-slate-800 px-4 py-3">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="bg-primary p-2.5 rounded-xl text-primary-foreground shadow-lg shadow-primary/20">
               <ListTodo className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900 leading-tight">FlowTasks</h1>
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">FlowTasks</h1>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Produtividade</p>
             </div>
           </div>
+          <ThemeToggle />
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 pt-8 space-y-8">
+      <main className="max-w-md mx-auto px-4 pt-6 space-y-8">
+        <div className="relative group">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+          <Input 
+            placeholder="Pesquisar tarefas..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 h-11 rounded-2xl bg-white dark:bg-slate-900 border-none shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20"
+          />
+          {search && (
+            <button 
+              onClick={() => setSearch("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
         <section className="space-y-3">
           <div className="flex items-center gap-2 px-1">
             <div className="h-4 w-1 bg-primary rounded-full" />
-            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Planejar meu dia</h2>
+            <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Planejar meu dia</h2>
           </div>
           <TaskForm onTaskCreated={fetchTasks} />
         </section>
@@ -92,21 +131,34 @@ const Index = () => {
           <div className="flex flex-col gap-4 px-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Tarefas</h2>
-                <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Tarefas</h2>
+                <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full font-bold">
                   {tasks.length}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground font-medium">
-                {completedCount} de {tasks.length} concluídas
-              </p>
+              <div className="flex items-center gap-4">
+                <p className="text-xs text-muted-foreground font-medium">
+                  {completedCount}/{tasks.length}
+                </p>
+                {completedCount > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={clearCompleted}
+                    className="h-7 text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 uppercase tracking-wider px-2"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Limpar
+                  </Button>
+                )}
+              </div>
             </div>
             
             <Tabs defaultValue="all" className="w-full" onValueChange={(val) => setFilter(val as FilterStatus)}>
-              <TabsList className="grid w-full grid-cols-3 bg-slate-100 p-1 h-11 rounded-xl">
-                <TabsTrigger value="all" className="rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">Todas</TabsTrigger>
-                <TabsTrigger value="pending" className="rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">Pendentes</TabsTrigger>
-                <TabsTrigger value="completed" className="rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">Feitas</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-900 p-1 h-11 rounded-xl">
+                <TabsTrigger value="all" className="rounded-lg text-xs font-semibold">Todas</TabsTrigger>
+                <TabsTrigger value="pending" className="rounded-lg text-xs font-semibold">Pendentes</TabsTrigger>
+                <TabsTrigger value="completed" className="rounded-lg text-xs font-semibold">Feitas</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -119,14 +171,16 @@ const Index = () => {
                 <TaskItem key={task.id} task={task} onUpdate={fetchTasks} />
               ))
             ) : (
-              <div className="text-center py-16 px-6 bg-white rounded-3xl border border-dashed border-slate-200 shadow-sm animate-in fade-in duration-500">
-                <div className="bg-slate-50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Filter className="h-7 w-7 text-slate-300" />
+              <div className="text-center py-16 px-6 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 shadow-sm animate-in fade-in duration-500">
+                <div className="bg-slate-50 dark:bg-slate-800/50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Filter className="h-7 w-7 text-slate-300 dark:text-slate-600" />
                 </div>
-                <h3 className="text-slate-900 font-bold mb-1">Nada por aqui</h3>
-                <p className="text-slate-500 text-sm max-w-[200px] mx-auto">
-                  {filter === "all" 
-                    ? "Sua lista de tarefas está vazia. Que tal começar agora?" 
+                <h3 className="text-slate-900 dark:text-white font-bold mb-1">Nada por aqui</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm max-w-[200px] mx-auto">
+                  {search 
+                    ? `Nenhuma tarefa encontrada para "${search}"`
+                    : filter === "all" 
+                    ? "Sua lista de tarefas está vazia." 
                     : `Não há tarefas ${filter === "pending" ? "pendentes" : "concluídas"} no momento.`}
                 </p>
               </div>
