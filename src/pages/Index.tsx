@@ -2,26 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/components/AuthProvider";
 import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
 import StatsOverview from "@/components/StatsOverview";
-import { ListTodo, Filter, Search, Trash2, X, LayoutDashboard, LogIn, LogOut, User } from "lucide-react";
+import { ListTodo, Filter, Search, Trash2, X, LayoutDashboard } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { showSuccess, showError } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface Task {
   id: string;
@@ -35,17 +25,16 @@ interface Task {
 type FilterStatus = "all" | "pending" | "completed";
 
 const Index = () => {
-  const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
 
   const fetchTasks = async () => {
+    // Buscamos apenas as colunas que sabemos que existem
     const { data, error } = await supabase
       .from("tasks")
-      .select("*")
+      .select("id, title, status, due_date, priority, category, created_at")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -68,6 +57,9 @@ const Index = () => {
       });
 
       setTasks(sorted);
+    } else if (error) {
+      console.error("Erro ao buscar tarefas:", error);
+      showError("Erro de sincronização com o banco.");
     }
     setLoading(false);
   };
@@ -86,15 +78,9 @@ const Index = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    showSuccess("Até logo!");
-    fetchTasks();
-  };
-
   useEffect(() => {
     fetchTasks();
-  }, [user]);
+  }, []);
 
   const filteredTasks = tasks.filter(task => {
     const matchesFilter = filter === "all" || task.status === filter;
@@ -104,20 +90,6 @@ const Index = () => {
 
   const completedCount = tasks.filter(t => t.status === 'completed').length;
   const pendingCount = tasks.length - completedCount;
-
-  if (authLoading && loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
-        <div className="w-full max-w-md space-y-6">
-          <Skeleton className="h-40 w-full rounded-3xl" />
-          <div className="space-y-4">
-            <Skeleton className="h-24 w-full rounded-2xl" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 transition-colors duration-300">
@@ -129,42 +101,12 @@ const Index = () => {
             </div>
             <div>
               <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">FlowTasks</h1>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Produtividade</p>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Lista Pública</p>
             </div>
           </div>
           
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10 text-slate-500">
-                    <User className="h-[1.2rem] w-[1.2rem]" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                  <DropdownMenuLabel className="font-bold">Minha Conta</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-xs text-slate-500 py-2">
-                    {user.email}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-rose-500 focus:text-rose-500 font-bold">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sair
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => navigate('/login')}
-                className="rounded-xl h-10 w-10 text-slate-500"
-              >
-                <LogIn className="h-[1.2rem] w-[1.2rem]" />
-              </Button>
-            )}
           </div>
         </div>
       </header>
