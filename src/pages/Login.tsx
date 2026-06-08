@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
-import { Auth } from "@supabase/auth-ui-react";
-import { ThemeSupa } from "@supabase/auth-ui-shared";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
+import { useNavigate } from "react-router-dom";
 import { ListTodo, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,14 +14,23 @@ import { showSuccess, showError } from "@/utils/toast";
 
 /**
  * Página de autenticação com login e cadastro.
- * Usa Supabase Auth para gerenciar sessões de usuário.
+ * Usa Supabase Auth para gerenciar sessões de usuário e redireciona para a home se autenticado.
  */
 const Login = () => {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
+
+  // Redireciona o usuário se ele já estiver autenticado
+  useEffect(() => {
+    if (user && !authLoading) {
+      navigate("/", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +79,11 @@ const Login = () => {
       setMode("login");
     }
   };
+
+  // Evita flash da tela de login se o usuário já estiver logado
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4">
