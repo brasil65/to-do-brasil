@@ -5,13 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
 import StatsOverview from "@/components/StatsOverview";
-import { ListTodo, Filter, Search, Trash2, X, LayoutDashboard } from "lucide-react";
+import { ListTodo, Filter, Search, Trash2, X, LayoutDashboard, LogOut } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { showSuccess, showError } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth";
+import { useNavigate } from "react-router-dom";
 
 interface Task {
   id: string;
@@ -24,11 +26,22 @@ interface Task {
 
 type FilterStatus = "all" | "pending" | "completed";
 
+/**
+ * Página principal da aplicação (protegida).
+ *
+ * Exibe o dashboard de tarefas do usuário autenticado:
+ * - Resumo de estatísticas
+ * - Formulário de nova tarefa
+ * - Lista de tarefas com filtros e busca
+ * - Botão de logout no header
+ */
 const Index = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const fetchTasks = async () => {
     const { data, error } = await supabase
@@ -38,7 +51,7 @@ const Index = () => {
 
     if (!error && data) {
       const priorityMap: Record<string, number> = { high: 3, medium: 2, low: 1 };
-      
+
       const sorted = [...data].sort((a, b) => {
         if (a.status !== b.status) {
           return a.status === "pending" ? -1 : 1;
@@ -74,6 +87,16 @@ const Index = () => {
     }
   };
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      showError("Erro ao sair");
+    } else {
+      showSuccess("Você saiu da sua conta");
+      navigate("/login");
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
   }, []);
@@ -97,33 +120,44 @@ const Index = () => {
             </div>
             <div>
               <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">FlowTasks</h1>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Produtividade</p>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                {user?.email?.split("@")[0] || "Usuário"}
+              </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-1">
             <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="rounded-xl h-10 w-10 text-slate-500 dark:text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+              title="Sair"
+            >
+              <LogOut className="h-[1.2rem] w-[1.2rem]" />
+            </Button>
           </div>
         </div>
       </header>
 
       <main className="max-w-md mx-auto px-4 pt-6 space-y-8">
-        <StatsOverview 
-          total={tasks.length} 
-          completed={completedCount} 
-          pending={pendingCount} 
+        <StatsOverview
+          total={tasks.length}
+          completed={completedCount}
+          pending={pendingCount}
         />
 
         <div className="relative group">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-          <Input 
+          <Input
             placeholder="Pesquisar tarefas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 h-11 rounded-2xl bg-white dark:bg-slate-900 border-none shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20"
           />
           {search && (
-            <button 
+            <button
               onClick={() => setSearch("")}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
@@ -149,9 +183,9 @@ const Index = () => {
               </div>
               <div className="flex items-center gap-4">
                 {completedCount > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={clearCompleted}
                     className="h-7 text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 uppercase tracking-wider px-2"
                   >
@@ -161,7 +195,7 @@ const Index = () => {
                 )}
               </div>
             </div>
-            
+
             <Tabs defaultValue="all" className="w-full" onValueChange={(val) => setFilter(val as FilterStatus)}>
               <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-900 p-1 h-11 rounded-xl">
                 <TabsTrigger value="all" className="rounded-lg text-xs font-semibold">Todas</TabsTrigger>
@@ -185,10 +219,10 @@ const Index = () => {
                 </div>
                 <h3 className="text-slate-900 dark:text-white font-bold mb-1">Fim da lista</h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm max-w-[200px] mx-auto">
-                  {search 
+                  {search
                     ? `Nenhuma tarefa encontrada para "${search}"`
-                    : filter === "all" 
-                    ? "Você concluiu tudo! Tempo de descansar." 
+                    : filter === "all"
+                    ? "Você concluiu tudo! Tempo de descansar."
                     : `Sem tarefas ${filter === "pending" ? "pendentes" : "concluídas"}.`}
                 </p>
               </div>
