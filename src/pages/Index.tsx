@@ -2,287 +2,199 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ListTodo, Plus, Trash2, Check, LogOut, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import TaskForm from "@/components/TaskForm";
+import TaskItem from "@/components/TaskItem";
+import StatsOverview from "@/components/StatsOverview";
+import { ListTodo, Filter, Search, Trash2, X, LayoutDashboard } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { showSuccess, showError } from "@/utils/toast";
-import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { showSuccess, showError } from "@/utils/toast";
+import { Button } from "@/components/ui/button";
 
 interface Task {
   id: string;
   title: string;
   status: string;
-  created_at: string;
+  due_date: string | null;
+  priority: string;
+  category?: string;
 }
 
+type FilterStatus = "all" | "pending" | "completed";
+
 const Index = () => {
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [newTask, setNewTask] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
+  const [filter, setFilter] = useState<FilterStatus>("all");
+  const [search, setSearch] = useState("");
 
   const fetchTasks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("*")
-        .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Erro ao buscar tarefas:", error);
-        showError("Erro ao carregar tarefas");
-        return;
-      }
+    if (!error && data) {
+      const priorityMap: Record<string, number> = { high: 3, medium: 2, low: 1 };
+      
+      const sorted = [...data].sort((a, b) => {
+        if (a.status !== b.status) {
+          return a.status === "pending" ? -1 : 1;
+        }
+        if (a.status === "pending") {
+          if (a.priority !== b.priority) {
+            return priorityMap[b.priority] - priorityMap[a.priority];
+          }
+          if (a.due_date && b.due_date) {
+            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+          }
+          return a.due_date ? -1 : 1;
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
 
-      setTasks(data || []);
-    } catch (err) {
-      console.error("Erro:", err);
-    } finally {
-      setLoading(false);
+      setTasks(sorted);
     }
+    setLoading(false);
   };
 
-  const addTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTask.trim()) return;
-
-    setSaving(true);
-    const { error } = await supabase.from("tasks").insert([
-      {
-        title: newTask.trim(),
-        status: "pending",
-      },
-    ]);
-
-    setSaving(false);
-    if (error) {
-      showError("Erro ao criar tarefa");
-    } else {
-      showSuccess("Tarefa adicionada!");
-      setNewTask("");
-      fetchTasks();
-    }
-  };
-
-  const toggleTask = async (task: Task) => {
-    const newStatus = task.status === "completed" ? "pending" : "completed";
+  const clearCompleted = async () => {
     const { error } = await supabase
       .from("tasks")
-      .update({ status: newStatus })
-      .eq("id", task.id);
+      .delete()
+      .eq("status", "completed");
 
     if (error) {
-      showError("Erro ao atualizar tarefa");
+      showError("Erro ao limpar tarefas");
     } else {
+      showSuccess("Tarefas concluídas removidas");
       fetchTasks();
-    }
-  };
-
-  const deleteTask = async (id: string) => {
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
-    if (error) {
-      showError("Erro ao remover tarefa");
-    } else {
-      showSuccess("Tarefa removida");
-      fetchTasks();
-    }
-  };
-
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      showError("Erro ao sair");
-    } else {
-      showSuccess("Até logo!");
-      navigate("/login");
     }
   };
 
   useEffect(() => {
-    // Pega o usuário atual
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email) {
-        setUserEmail(user.email.split("@")[0]);
-      }
-    });
     fetchTasks();
   }, []);
 
-  const pendingTasks = tasks.filter((t) => t.status === "pending");
-  const completedTasks = tasks.filter((t) => t.status === "completed");
+  const filteredTasks = tasks.filter(task => {
+    const matchesFilter = filter === "all" || task.status === filter;
+    const matchesSearch = task.title.toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const completedCount = tasks.filter(t => t.status === 'completed').length;
+  const pendingCount = tasks.length - completedCount;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 transition-colors duration-300">
       <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b dark:border-slate-800 px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
+        <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg">
+            <div className="bg-primary p-2.5 rounded-xl text-primary-foreground shadow-lg shadow-primary/20">
               <ListTodo className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
-                FlowTasks
-              </h1>
-              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
-                Minhas Tarefas
-              </p>
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">FlowTasks</h1>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Produtividade</p>
             </div>
           </div>
-
+          
           <div className="flex items-center gap-1">
-            <div className="flex items-center gap-2 mr-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-              <User className="h-3.5 w-3.5 text-slate-500" />
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-300 max-w-[80px] truncate">
-                {userEmail}
-              </span>
-            </div>
             <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              className="rounded-xl h-10 w-10 text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 text-center">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              {tasks.length}
-            </p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Total
-            </p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 text-center">
-            <p className="text-2xl font-bold text-amber-500">{pendingTasks.length}</p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Pendentes
-            </p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 text-center">
-            <p className="text-2xl font-bold text-emerald-500">
-              {completedTasks.length}
-            </p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Concluídas
-            </p>
-          </div>
+      <main className="max-w-md mx-auto px-4 pt-6 space-y-8">
+        <StatsOverview 
+          total={tasks.length} 
+          completed={completedCount} 
+          pending={pendingCount} 
+        />
+
+        <div className="relative group">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+          <Input 
+            placeholder="Pesquisar tarefas..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 h-11 rounded-2xl bg-white dark:bg-slate-900 border-none shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20"
+          />
+          {search && (
+            <button 
+              onClick={() => setSearch("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
-        {/* Add Task Form */}
-        <form onSubmit={addTask} className="flex gap-2">
-          <Input
-            placeholder="Adicionar nova tarefa..."
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-            className="flex-1 h-12 rounded-xl bg-white dark:bg-slate-900 border-none shadow-sm"
-          />
-          <Button
-            type="submit"
-            disabled={saving || !newTask.trim()}
-            className="h-12 w-12 rounded-xl p-0 bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
-        </form>
-
-        {/* Loading */}
-        {loading && (
-          <div className="text-center py-8">
-            <p className="text-slate-500">Carregando tarefas...</p>
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <div className="h-4 w-1 bg-primary rounded-full" />
+            <h2 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">Adicionar Tarefa</h2>
           </div>
-        )}
+          <TaskForm onTaskCreated={fetchTasks} />
+        </section>
 
-        {/* Pending Tasks */}
-        {!loading && pendingTasks.length > 0 && (
-          <section className="space-y-2">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
-              Pendentes ({pendingTasks.length})
-            </h2>
-            <div className="space-y-2">
-              {pendingTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 group"
-                >
-                  <button
-                    onClick={() => toggleTask(task)}
-                    className="h-6 w-6 rounded-full border-2 border-slate-300 dark:border-slate-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center justify-center transition-colors"
-                  />
-                  <p className="flex-1 text-slate-700 dark:text-slate-200">
-                    {task.title}
-                  </p>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all"
+        <section className="space-y-5">
+          <div className="flex flex-col gap-4 px-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <LayoutDashboard className="h-4 w-4 text-primary" />
+                <h2 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">Minha Lista</h2>
+              </div>
+              <div className="flex items-center gap-4">
+                {completedCount > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={clearCompleted}
+                    className="h-7 text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 uppercase tracking-wider px-2"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Limpar Feitas
+                  </Button>
+                )}
+              </div>
             </div>
-          </section>
-        )}
-
-        {/* Completed Tasks */}
-        {!loading && completedTasks.length > 0 && (
-          <section className="space-y-2">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
-              Concluídas ({completedTasks.length})
-            </h2>
-            <div className="space-y-2">
-              {completedTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 group"
-                >
-                  <button
-                    onClick={() => toggleTask(task)}
-                    className="h-6 w-6 rounded-full bg-emerald-500 border-2 border-emerald-500 flex items-center justify-center"
-                  >
-                    <Check className="h-4 w-4 text-white" />
-                  </button>
-                  <p className="flex-1 text-slate-400 dark:text-slate-500 line-through">
-                    {task.title}
-                  </p>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Empty State */}
-        {!loading && tasks.length === 0 && (
-          <div className="text-center py-16">
-            <div className="bg-slate-100 dark:bg-slate-800 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <ListTodo className="h-8 w-8 text-slate-400" />
-            </div>
-            <h3 className="text-slate-900 dark:text-white font-bold mb-1">
-              Nenhuma tarefa ainda
-            </h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
-              Adicione sua primeira tarefa acima!
-            </p>
+            
+            <Tabs defaultValue="all" className="w-full" onValueChange={(val) => setFilter(val as FilterStatus)}>
+              <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-900 p-1 h-11 rounded-xl">
+                <TabsTrigger value="all" className="rounded-lg text-xs font-semibold">Todas</TabsTrigger>
+                <TabsTrigger value="pending" className="rounded-lg text-xs font-semibold">Pendentes</TabsTrigger>
+                <TabsTrigger value="completed" className="rounded-lg text-xs font-semibold">Concluídas</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-        )}
+
+          <div className="space-y-3">
+            {loading ? (
+              [1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
+            ) : filteredTasks.length > 0 ? (
+              filteredTasks.map((task) => (
+                <TaskItem key={task.id} task={task} onUpdate={fetchTasks} />
+              ))
+            ) : (
+              <div className="text-center py-16 px-6 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 shadow-sm animate-in fade-in duration-500">
+                <div className="bg-slate-50 dark:bg-slate-800/50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Filter className="h-7 w-7 text-slate-300 dark:text-slate-600" />
+                </div>
+                <h3 className="text-slate-900 dark:text-white font-bold mb-1">Fim da lista</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm max-w-[200px] mx-auto">
+                  {search 
+                    ? `Nenhuma tarefa encontrada para "${search}"`
+                    : filter === "all" 
+                    ? "Você concluiu tudo! Tempo de descansar." 
+                    : `Sem tarefas ${filter === "pending" ? "pendentes" : "concluídas"}.`}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );
