@@ -5,13 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
 import StatsOverview from "@/components/StatsOverview";
-import { ListTodo, Filter, Search, Trash2, X, LayoutDashboard } from "lucide-react";
+import { ListTodo, Filter, Search, Trash2, X, LayoutDashboard, LogOut, User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { showSuccess, showError } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/AuthProvider";
 
 interface Task {
   id: string;
@@ -25,6 +26,7 @@ interface Task {
 type FilterStatus = "all" | "pending" | "completed";
 
 const Index = () => {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>("all");
@@ -74,6 +76,15 @@ const Index = () => {
     }
   };
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      showError("Erro ao sair");
+    } else {
+      showSuccess("Até logo!");
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
   }, []);
@@ -103,11 +114,35 @@ const Index = () => {
           
           <div className="flex items-center gap-1">
             <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="rounded-xl h-10 w-10 text-slate-500 dark:text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+              title="Sair"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </header>
 
       <main className="max-w-md mx-auto px-4 pt-6 space-y-8">
+        {/* User Info */}
+        {user && (
+          <div className="flex items-center gap-3 px-1">
+            <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-xl">
+              <User className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                {user.user_metadata?.full_name || "Usuário"}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
+            </div>
+          </div>
+        )}
+
         <StatsOverview 
           total={tasks.length} 
           completed={completedCount} 
