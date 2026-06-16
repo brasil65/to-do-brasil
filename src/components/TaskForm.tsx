@@ -37,41 +37,45 @@ const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
+  e.preventDefault();
+  if (!title.trim()) return;
 
-    setLoading(true);
+  setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
+  // Refresca a sessão para garantir que o token JWT de acesso no
+  // header da requisição esteja fresco. Sem isso, auth.uid() na política
+  // RLS pode retornar NULL (token expirado) enquanto getUser() ainda
+  // funciona via refresh token — causando falha no INSERT do RLS.
+  const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
 
-    if (!user) {
-      showError("Você precisa estar logado para criar tarefas");
-      setLoading(false);
-      return;
-    }
-
-    const { error } = await supabase.from("tasks").insert([
-      {
-        title: title.trim(),
-        due_date: dueDate?.toISOString() || null,
-        priority,
-        category,
-        status: "pending",
-        user_id: user.id,
-      },
-    ]);
-
+  if (sessionError || !session?.user) {
+    showError("Sessão expirada. Faça login novamente.");
     setLoading(false);
-    if (error) {
-      showError(`Erro: ${error.message}`);
-    } else {
-      showSuccess("Tarefa criada!");
-      setTitle("");
-      setDueDate(undefined);
-      setPriority("medium");
-      onTaskCreated();
-    }
-  };
+    return;
+  }
+
+  const { error } = await supabase.from("tasks").insert([
+    {
+      title: title.trim(),
+      due_date: dueDate?.toISOString() || null,
+      priority,
+      category,
+      status: "pending",
+      user_id: session.user.id,
+    },
+  ]);
+
+  setLoading(false);
+  if (error) {
+    showError(`Erro: ${error.message}`);
+  } else {
+    showSuccess("Tarefa criada!");
+    setTitle("");
+    setDueDate(undefined);
+    setPriority("medium");
+    onTaskCreated();
+  }
+};
 
   const priorityColors = {
     low: "text-blue-500",
