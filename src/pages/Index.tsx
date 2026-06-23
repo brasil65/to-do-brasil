@@ -38,6 +38,19 @@ interface Task {
 
 type FilterStatus = "all" | "pending" | "completed";
 
+/**
+ * Trunca o email para exibição, mostrando apenas os 3 primeiros caracteres
+ * e o domínio. Protege privacidade em cenários de dispositivo compartilhado.
+ *
+ * Ex: "joao.silva@empresa.com" → "joa***@empresa.com"
+ */
+const maskEmail = (email: string): string => {
+  const [localPart, domain] = email.split("@");
+  if (!domain) return "***";
+  const visible = localPart.substring(0, 3);
+  return `${visible}***@${domain}`;
+};
+
 const Index = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -181,7 +194,7 @@ const Index = () => {
               <p className="text-sm font-semibold text-slate-900 dark:text-white">
                 {user.user_metadata?.full_name || "Usuário"}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{maskEmail(user.email)}</p>
             </div>
           </div>
         )}
