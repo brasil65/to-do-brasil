@@ -17,6 +17,7 @@ interface Task {
   due_date: string | null;
   priority: string;
   category?: string;
+  deleted_at: string | null;
 }
 
 interface TaskItemProps {
@@ -53,11 +54,14 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
   };
 
   const deleteTask = async () => {
-    const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+    const { error } = await supabase
+      .from("tasks")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", task.id);
     if (error) {
       showError("Erro ao remover tarefa");
     } else {
-      showSuccess("Tarefa removida");
+      showSuccess("Tarefa movida para a lixeira");
       onUpdate();
     }
   };

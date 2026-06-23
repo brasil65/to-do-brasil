@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { showSuccess, showError } from "@/utils/toast";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
+import TrashSection from "@/components/TrashSection";
 
 interface Task {
   id: string;
@@ -21,6 +22,8 @@ interface Task {
   due_date: string | null;
   priority: string;
   category?: string;
+  deleted_at: string | null;
+  created_at?: string;
 }
 
 type FilterStatus = "all" | "pending" | "completed";
@@ -73,14 +76,32 @@ const Index = () => {
 
     const { error } = await supabase
       .from("tasks")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("status", "completed")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .is("deleted_at", null);
 
     if (error) {
       showError("Erro ao limpar tarefas");
     } else {
-      showSuccess("Tarefas concluídas removidas");
+      showSuccess("Tarefas concluídas movidas para a lixeira");
+      fetchTasks();
+    }
+  };
+
+  const emptyTrash = async () => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("user_id", user.id)
+      .not("deleted_at", "is", null);
+
+    if (error) {
+      showError("Erro ao esvaziar lixeira");
+    } else {
+      showSuccess("Lixeira esvaziada");
       fetchTasks();
     }
   };
@@ -98,14 +119,17 @@ const Index = () => {
     fetchTasks();
   }, [user]);
 
-  const filteredTasks = tasks.filter(task => {
+  const activeTasks = tasks.filter(t => !t.deleted_at);
+  const deletedTasks = tasks.filter(t => !!t.deleted_at);
+
+  const filteredTasks = activeTasks.filter(task => {
     const matchesFilter = filter === "all" || task.status === filter;
     const matchesSearch = task.title.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  const completedCount = tasks.filter(t => t.status === "completed").length;
-  const pendingCount = tasks.length - completedCount;
+  const completedCount = activeTasks.filter(t => t.status === "completed").length;
+  const pendingCount = activeTasks.length - completedCount;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 transition-colors duration-300">
@@ -152,7 +176,7 @@ const Index = () => {
         )}
 
         <StatsOverview
-          total={tasks.length}
+          total={activeTasks.length}
           completed={completedCount}
           pending={pendingCount}
         />
@@ -238,6 +262,14 @@ const Index = () => {
             )}
           </div>
         </section>
+
+        {deletedTasks.length > 0 && (
+          <TrashSection
+            deletedTasks={deletedTasks}
+            onRefresh={fetchTasks}
+            onEmptyTrash={emptyTrash}
+          />
+        )}
       </main>
     </div>
   );
