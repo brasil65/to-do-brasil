@@ -10,37 +10,65 @@ interface StatsOverviewProps {
   pending: number;
 }
 
+/**
+ * Cards de estatísticas do dashboard com gradiente azul e visual moderno.
+ * Exibe progresso geral e contagens de tarefas feitas, pendentes e total.
+ */
 const StatsOverview = ({ total, completed, pending }: StatsOverviewProps) => {
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="flex items-center justify-between mb-4">
+      {/* Main progress card with blue gradient */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-900 p-6 rounded-3xl shadow-lg shadow-blue-600/20 dark:shadow-blue-900/30">
+        {/* Decorative circles */}
+        <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
+        <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/5 rounded-full" />
+
+        <div className="relative flex items-center justify-between mb-5">
           <div className="space-y-1">
-            <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Progresso Diário</h3>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{percentage}%</p>
+            <h3 className="text-xs font-black text-blue-200 uppercase tracking-[0.2em]">
+              Progresso Diário
+            </h3>
+            <p className="text-4xl font-black text-white">{percentage}%</p>
           </div>
-          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-2xl">
-            <TrendingUp className="h-6 w-6 text-emerald-500" />
+          <div className="bg-white/15 p-3.5 rounded-2xl backdrop-blur-sm">
+            <TrendingUp className="h-7 w-7 text-white" />
           </div>
         </div>
-        <Progress value={percentage} className="h-2 rounded-full bg-slate-100 dark:bg-slate-800" />
-        <div className="grid grid-cols-3 gap-2 mt-6">
-          <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-            <CheckCircle2 className="h-4 w-4 mx-auto mb-1 text-emerald-500" />
-            <p className="text-lg font-bold dark:text-white leading-tight">{completed}</p>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Feitas</p>
+
+        <Progress
+          value={percentage}
+          className="h-2.5 rounded-full bg-white/20 [&>div]:bg-white"
+        />
+
+        <div className="grid grid-cols-3 gap-3 mt-6">
+          <div className="text-center p-3 bg-white/10 backdrop-blur-sm rounded-2xl">
+            <CheckCircle2 className="h-4 w-4 mx-auto mb-1.5 text-blue-200" />
+            <p className="text-lg font-bold text-white leading-tight">
+              {completed}
+            </p>
+            <p className="text-[9px] font-bold text-blue-200 uppercase tracking-tighter">
+              Feitas
+            </p>
           </div>
-          <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-            <Circle className="h-4 w-4 mx-auto mb-1 text-amber-500" />
-            <p className="text-lg font-bold dark:text-white leading-tight">{pending}</p>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Fila</p>
+          <div className="text-center p-3 bg-white/10 backdrop-blur-sm rounded-2xl">
+            <Circle className="h-4 w-4 mx-auto mb-1.5 text-amber-300" />
+            <p className="text-lg font-bold text-white leading-tight">
+              {pending}
+            </p>
+            <p className="text-[9px] font-bold text-blue-200 uppercase tracking-tighter">
+              Fila
+            </p>
           </div>
-          <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-            <Clock className="h-4 w-4 mx-auto mb-1 text-blue-500" />
-            <p className="text-lg font-bold dark:text-white leading-tight">{total}</p>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Total</p>
+          <div className="text-center p-3 bg-white/10 backdrop-blur-sm rounded-2xl">
+            <Clock className="h-4 w-4 mx-auto mb-1.5 text-blue-200" />
+            <p className="text-lg font-bold text-white leading-tight">
+              {total}
+            </p>
+            <p className="text-[9px] font-bold text-blue-200 uppercase tracking-tighter">
+              Total
+            </p>
           </div>
         </div>
       </div>

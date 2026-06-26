@@ -15,6 +15,7 @@ import { showSuccess, showError } from "@/utils/toast";
 /**
  * Página de autenticação com login e cadastro.
  * Usa Supabase Auth para gerenciar sessões de usuário e redireciona para a home se autenticado.
+ * Tema azul com gradiente no fundo e card com sombra azulada.
  */
 const Login = () => {
   const { user, loading: authLoading } = useAuth();
@@ -86,23 +87,23 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-blue-950 dark:via-slate-950 dark:to-blue-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo e Título */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl shadow-lg shadow-primary/20 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl shadow-lg shadow-primary/25 mb-4">
             <ListTodo className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             FlowTasks
           </h1>
-          <p className="text-slate-500 dark:text-slate-400">
+          <p className="text-muted-foreground">
             Organize suas tarefas de forma simples
           </p>
         </div>
 
         {/* Card de Autenticação */}
-        <Card className="border-none shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 rounded-3xl overflow-hidden">
+        <Card className="border-none shadow-xl shadow-blue-200/50 dark:shadow-blue-900/30 rounded-3xl overflow-hidden bg-card">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl font-bold text-center">
               {mode === "login" ? "Bem-vindo de volta" : "Criar conta"}
@@ -116,11 +117,11 @@ const Login = () => {
 
           <CardContent>
             <Tabs value={mode} onValueChange={(v) => setMode(v as "login" | "register")}>
-              <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
-                <TabsTrigger value="login" className="rounded-lg text-sm font-medium">
+              <TabsList className="grid w-full grid-cols-2 mb-6 bg-blue-50 dark:bg-blue-950/50 rounded-xl p-1">
+                <TabsTrigger value="login" className="rounded-lg text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   Entrar
                 </TabsTrigger>
-                <TabsTrigger value="register" className="rounded-lg text-sm font-medium">
+                <TabsTrigger value="register" className="rounded-lg text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   Cadastrar
                 </TabsTrigger>
               </TabsList>
@@ -128,35 +129,35 @@ const Login = () => {
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <Label htmlFor="login-email" className="text-sm font-medium">
                       Email
                     </Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-email"
                         type="email"
                         placeholder="seu@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                        className="pl-10 h-12 rounded-xl bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary/20"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="login-password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <Label htmlFor="login-password" className="text-sm font-medium">
                       Senha
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-password"
                         type="password"
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                        className="pl-10 h-12 rounded-xl bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -181,52 +182,52 @@ const Login = () => {
               <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="register-name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <Label htmlFor="register-name" className="text-sm font-medium">
                       Nome
                     </Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="register-name"
                         type="text"
                         placeholder="Seu nome"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                        className="pl-10 h-12 rounded-xl bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary/20"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="register-email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <Label htmlFor="register-email" className="text-sm font-medium">
                       Email
                     </Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="register-email"
                         type="email"
                         placeholder="seu@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                        className="pl-10 h-12 rounded-xl bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary/20"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="register-password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <Label htmlFor="register-password" className="text-sm font-medium">
                       Senha
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="register-password"
                         type="password"
                         placeholder="Mínimo 6 caracteres"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                        className="pl-10 h-12 rounded-xl bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -251,7 +252,7 @@ const Login = () => {
           </CardContent>
 
           <CardFooter className="flex justify-center pt-0">
-            <p className="text-xs text-slate-400 text-center">
+            <p className="text-xs text-muted-foreground text-center">
               Ao continuar, você concorda com nossos{" "}
               <a href="#" className="text-primary hover:underline">
                 Termos de Uso
@@ -265,7 +266,7 @@ const Login = () => {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-xs text-slate-400 mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-6">
           Desenvolvido por FREDERICO BRASIL usando Dyad
         </p>
       </div>

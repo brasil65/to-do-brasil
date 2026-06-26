@@ -23,12 +23,16 @@ interface TaskFormProps {
 }
 
 const CATEGORIES = [
-  { id: "work", label: "Trabalho", color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" },
-  { id: "personal", label: "Pessoal", color: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" },
-  { id: "health", label: "Saúde", color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  { id: "urgent", label: "Urgente", color: "bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400" },
+  { id: "work", label: "Trabalho", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  { id: "personal", label: "Pessoal", color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" },
+  { id: "health", label: "Saúde", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+  { id: "urgent", label: "Urgente", color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" },
 ];
 
+/**
+ * Formulário de criação de tarefa com botão de adicionar, data, prioridade e categoria.
+ * Foco e botões em tons azuis.
+ */
 const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
@@ -42,7 +46,10 @@ const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
 
     setLoading(true);
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
     if (userError || !user) {
       showError("Sessão expirada. Faça login novamente.");
@@ -86,7 +93,7 @@ const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
           placeholder="O que você precisa fazer?"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="flex-1 rounded-xl bg-white dark:bg-slate-900 border-none shadow-sm h-12 px-4 focus-visible:ring-2 focus-visible:ring-primary/20"
+          className="flex-1 rounded-xl bg-card border-border shadow-sm h-12 px-4 focus-visible:ring-2 focus-visible:ring-primary/20"
         />
         <Button
           type="submit"
@@ -105,7 +112,9 @@ const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
               size="sm"
               className={cn(
                 "h-8 rounded-full text-[10px] font-bold uppercase tracking-wider px-3",
-                dueDate ? "bg-primary/10 text-primary hover:bg-primary/20" : "text-slate-400 hover:text-slate-600 dark:text-slate-500"
+                dueDate
+                  ? "bg-primary/10 text-primary hover:bg-primary/20"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
@@ -113,17 +122,12 @@ const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={dueDate}
-              onSelect={setDueDate}
-              initialFocus
-            />
+            <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
           </PopoverContent>
         </Popover>
 
         <Select value={priority} onValueChange={setPriority}>
-          <SelectTrigger className="h-8 w-auto rounded-full text-[10px] font-bold uppercase tracking-wider px-3 border-none bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 shadow-none focus:ring-0">
+          <SelectTrigger className="h-8 w-auto rounded-full text-[10px] font-bold uppercase tracking-wider px-3 border-none bg-transparent hover:bg-muted shadow-none focus:ring-0">
             <div className="flex items-center gap-1.5">
               <Flag className={cn("h-3 w-3 fill-current", priorityColors[priority as keyof typeof priorityColors])} />
               <SelectValue placeholder="Prioridade" />
@@ -137,15 +141,17 @@ const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
         </Select>
 
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="h-8 w-auto rounded-full text-[10px] font-bold uppercase tracking-wider px-3 border-none bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 shadow-none focus:ring-0">
+          <SelectTrigger className="h-8 w-auto rounded-full text-[10px] font-bold uppercase tracking-wider px-3 border-none bg-transparent hover:bg-muted shadow-none focus:ring-0">
             <div className="flex items-center gap-1.5">
-              <Tag className="h-3 w-3 text-slate-400" />
+              <Tag className="h-3 w-3 text-muted-foreground" />
               <SelectValue placeholder="Categoria" />
             </div>
           </SelectTrigger>
           <SelectContent className="rounded-xl">
-            {CATEGORIES.map(cat => (
-              <SelectItem key={cat.id} value={cat.id} className="text-xs">{cat.label}</SelectItem>
+            {CATEGORIES.map((cat) => (
+              <SelectItem key={cat.id} value={cat.id} className="text-xs">
+                {cat.label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>

@@ -36,17 +36,21 @@ interface TaskItemProps {
   onUpdate: () => void;
 }
 
-const CATEGORIES: Record<string, { label: string, color: string }> = {
-  work: { label: "Trabalho", color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" },
-  personal: { label: "Pessoal", color: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" },
-  health: { label: "Saúde", color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  urgent: { label: "Urgente", color: "bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400" },
+const CATEGORIES: Record<string, { label: string; color: string }> = {
+  work: { label: "Trabalho", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  personal: { label: "Pessoal", color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" },
+  health: { label: "Saúde", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+  urgent: { label: "Urgente", color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" },
 };
 
+/**
+ * Item individual de tarefa com ações de toggle, editar e remover.
+ * Cores de prioridade e bordas adaptadas ao tema azul.
+ */
 const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const isCompleted = task.status === "completed";
-  
+
   const dueDate = task.due_date ? new Date(task.due_date) : null;
   const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate) && !isCompleted;
 
@@ -88,21 +92,29 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
 
   return (
     <>
-      <div className={cn(
-        "flex items-center gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border group transition-all hover:shadow-md animate-in fade-in slide-in-from-bottom-2 duration-300",
-        isOverdue ? "border-rose-200 dark:border-rose-900/30 bg-rose-50/30 dark:bg-rose-900/5" : "border-slate-100 dark:border-slate-800"
-      )}>
+      <div
+        className={cn(
+          "flex items-center gap-3 p-4 bg-card rounded-2xl shadow-sm border group transition-all hover:shadow-md hover:border-primary/20 animate-in fade-in slide-in-from-bottom-2 duration-300",
+          isOverdue
+            ? "border-rose-200 dark:border-rose-900/30 bg-rose-50/30 dark:bg-rose-900/5"
+            : "border-border"
+        )}
+      >
         <Checkbox
           checked={isCompleted}
           onCheckedChange={toggleStatus}
-          className="h-6 w-6 rounded-full border-2 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+          className="h-6 w-6 rounded-full border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center flex-wrap gap-1.5 mb-0.5">
-            <p className={cn(
-              "text-base font-semibold truncate transition-all",
-              isCompleted ? "text-slate-400 dark:text-slate-600 line-through opacity-60" : "text-slate-900 dark:text-slate-100"
-            )}>
+            <p
+              className={cn(
+                "text-base font-semibold truncate transition-all",
+                isCompleted
+                  ? "text-muted-foreground line-through opacity-60"
+                  : "text-foreground"
+              )}
+            >
               {task.title}
             </p>
             {currentCategory && (
@@ -119,10 +131,12 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
           </div>
           <div className="flex items-center gap-3">
             {dueDate && (
-              <div className={cn(
-                "flex items-center text-[10px] font-medium uppercase tracking-wider",
-                isOverdue ? "text-rose-500" : "text-slate-400 dark:text-slate-500"
-              )}>
+              <div
+                className={cn(
+                  "flex items-center text-[10px] font-medium uppercase tracking-wider",
+                  isOverdue ? "text-rose-500" : "text-muted-foreground"
+                )}
+              >
                 <Calendar className="h-3 w-3 mr-1" />
                 {format(dueDate, "dd/MM")}
               </div>
@@ -138,7 +152,7 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
             variant="ghost"
             size="icon"
             onClick={() => setIsEditDialogOpen(true)}
-            className="h-8 w-8 text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -147,7 +161,7 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-slate-400 hover:text-destructive hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -157,7 +171,7 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
                 <AlertDialogTitle>Mover para a lixeira?</AlertDialogTitle>
                 <AlertDialogDescription>
                   A tarefa{" "}
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">"{task.title}"</span>{" "}
+                  <span className="font-semibold text-foreground">"{task.title}"</span>{" "}
                   será movida para a lixeira.
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -165,7 +179,7 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={deleteTask}
-                  className="bg-rose-600 hover:bg-rose-700 text-white"
+                  className="bg-destructive hover:bg-destructive/90 text-white"
                 >
                   Mover para lixeira
                 </AlertDialogAction>
