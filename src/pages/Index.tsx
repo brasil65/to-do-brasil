@@ -150,7 +150,17 @@ const Index = () => {
   const pendingCount = activeTasks.length - completedCount;
 
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
+    <div className="min-h-screen bg-background transition-colors duration-300 relative">
+      {/* Background image */}
+      <div className="fixed inset-0 z-0">
+        <img
+          src="https://images.unsplash.com/photo-1557683316-973673baf926?w=1920&q=80"
+          alt=""
+          className="w-full h-full object-cover opacity-[0.03] dark:opacity-[0.05]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/80" />
+      </div>
+
       {/* Sidebar */}
       <Sidebar
         isOpen={isOpen}
@@ -163,7 +173,7 @@ const Index = () => {
 
       {/* Main content area */}
       <div
-        className={`min-h-screen transition-all duration-300 ${
+        className={`relative z-10 min-h-screen transition-all duration-300 ${
           isDesktop ? "ml-[260px]" : ""
         }`}
       >
