@@ -1,110 +1,98 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { RotateCcw, Trash2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { showSuccess, showError } from "@/utils/toast";
+import { RotateCcw, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
-interface TrashItemProps {
+interface Task {
   id: string;
   title: string;
-  onRestore: () => void;
-  onPermanentDelete: () => void;
+  status: string;
+  due_date: string | null;
+  priority: string;
+  category?: string;
+  deleted_at: string | null;
+}
+
+interface TrashItemProps {
+  task: Task;
+  onUpdate: () => void;
 }
 
 /**
- * Item visualizado na lixeira com opções de restaurar ou excluir permanentemente.
- * A exclusão permanente exige confirmação via AlertDialog.
+ * Item da lixeira com ações de restaurar e deletar permanentemente.
+ * Design consistente com o tema escuro.
  */
-const TrashItem = ({ id, title, onRestore, onPermanentDelete }: TrashItemProps) => {
-  const [confirmOpen, setConfirmOpen] = useState(false);
+const TrashItem = ({ task, onUpdate }: TrashItemProps) => {
+  const [loading, setLoading] = useState(false);
 
   const restoreTask = async () => {
+    setLoading(true);
     const { error } = await supabase
       .from("tasks")
       .update({ deleted_at: null })
-      .eq("id", id);
+      .eq("id", task.id);
+    setLoading(false);
 
     if (error) {
       showError("Erro ao restaurar tarefa");
     } else {
-      showSuccess("Tarefa restaurada");
-      onRestore();
+      showSuccess("Tarefa restaurada!");
+      onUpdate();
     }
   };
 
   const permanentDelete = async () => {
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    setLoading(true);
+    const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+    setLoading(false);
+
     if (error) {
-      showError("Erro ao excluir tarefa");
+      showError("Erro ao deletar tarefa");
     } else {
-      showSuccess("Tarefa excluída permanentemente");
-      onPermanentDelete();
+      showSuccess("Tarefa deletada permanentemente");
+      onUpdate();
     }
-    setConfirmOpen(false);
   };
 
   return (
-    <div className="flex items-center gap-3 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-2xl border border-slate-200/60 dark:border-slate-700/40 opacity-75 hover:opacity-100 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+    <div className="group flex items-center gap-3 rounded-2xl border border-white/8 bg-white/5 backdrop-blur-sm p-4 transition-all duration-200 hover:bg-white/8">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate line-through">
-          {title}
+        <p className="text-sm font-medium text-slate-300 truncate line-through">
+          {task.title}
         </p>
+        {task.deleted_at && (
+          <p className="text-[10px] text-slate-500 mt-1">
+            Deletada em {format(new Date(task.deleted_at), "dd/MM/yyyy HH:mm")}
+          </p>
+        )}
       </div>
-      <div className="flex items-center gap-1">
+
+      <div className="flex items-center gap-1.5">
         <Button
           variant="ghost"
-          size="icon"
+          size="sm"
           onClick={restoreTask}
-          className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-          title="Restaurar"
+          disabled={loading}
+          className="h-8 rounded-lg text-xs font-medium text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 px-3"
         >
-          <RotateCcw className="h-4 w-4" />
+          <RotateCcw className="h-3.5 w-3.5 mr-1" />
+          Restaurar
         </Button>
-
-        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-              title="Excluir permanentemente"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir permanentemente?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação não pode ser desfeita. A tarefa{" "}
-                <span className="font-semibold text-rose-600 dark:text-rose-400">"{title}"</span>{" "}
-                será removida definitivamente.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={permanentDelete}
-                className="bg-rose-600 hover:bg-rose-700 text-white"
-              >
-                Excluir permanentemente
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={permanentDelete}
+          disabled={loading}
+          className="h-8 rounded-lg text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-3"
+        >
+          <Trash2 className="h-3.5 w-3.5 mr-1" />
+          Deletar
+        </Button>
       </div>
     </div>
   );

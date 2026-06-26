@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
+import { showSuccess, showError } from "@/utils/toast";
+import { Check, Trash2, Calendar, Flag, Pencil } from "lucide-react";
+import { format, isPast, isToday } from "date-fns";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -12,14 +16,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Calendar, Pencil, Flag, AlertCircle } from "lucide-react";
-import { format, isPast, isToday } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
-import { showSuccess, showError } from "@/utils/toast";
-import { cn } from "@/lib/utils";
-import EditTaskDialog from "./EditTaskDialog";
 
 interface Task {
   id: string;
@@ -28,7 +25,7 @@ interface Task {
   due_date: string | null;
   priority: string;
   category?: string;
-  deleted_at: string | null;
+  created_at?: string;
 }
 
 interface TaskItemProps {
@@ -36,165 +33,172 @@ interface TaskItemProps {
   onUpdate: () => void;
 }
 
-const CATEGORIES: Record<string, { label: string; color: string }> = {
-  work: { label: "Trabalho", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  personal: { label: "Pessoal", color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" },
-  health: { label: "Saúde", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  urgent: { label: "Urgente", color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" },
+const CATEGORY_STYLES: Record<string, { bg: string; text: string; dot: string; label: string }> = {
+  work: { bg: "bg-blue-500/10", text: "text-blue-400", dot: "bg-blue-400", label: "Trabalho" },
+  personal: { bg: "bg-violet-500/10", text: "text-violet-400", dot: "bg-violet-400", label: "Pessoal" },
+  health: { bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-emerald-400", label: "Saúde" },
+  urgent: { bg: "bg-rose-500/10", text: "text-rose-400", dot: "bg-rose-400", label: "Urgente" },
+};
+
+const PRIORITY_CONFIG: Record<string, { color: string; label: string }> = {
+  low: { color: "text-blue-400", label: "Baixa" },
+  medium: { color: "text-amber-400", label: "Média" },
+  high: { color: "text-rose-400", label: "Alta" },
 };
 
 /**
- * Item individual de tarefa com ações de toggle, editar e remover.
- * Cores de prioridade e bordas adaptadas ao tema azul.
+ * Card de tarefa com design moderno, cores por categoria,
+ * indicador de prioridade e ações de completar/deletar.
  */
 const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const catStyle = CATEGORY_STYLES[task.category || "personal"] || CATEGORY_STYLES.personal;
+  const priStyle = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
   const isCompleted = task.status === "completed";
 
-  const dueDate = task.due_date ? new Date(task.due_date) : null;
-  const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate) && !isCompleted;
+  const isOverdue =
+    task.due_date && !isCompleted && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date));
+  const isDueToday = task.due_date && isToday(new Date(task.due_date));
 
   const toggleStatus = async () => {
+    setLoading(true);
     const newStatus = isCompleted ? "pending" : "completed";
-    const { error } = await supabase
-      .from("tasks")
-      .update({ status: newStatus })
-      .eq("id", task.id);
+    const { error } = await supabase.from("tasks").update({ status: newStatus }).eq("id", task.id);
+    setLoading(false);
 
     if (error) {
       showError("Erro ao atualizar tarefa");
     } else {
+      showSuccess(newStatus === "completed" ? "Tarefa concluída!" : "Tarefa reaberta");
       onUpdate();
     }
   };
 
   const deleteTask = async () => {
+    setLoading(true);
     const { error } = await supabase
       .from("tasks")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", task.id);
+    setLoading(false);
+
     if (error) {
-      showError("Erro ao remover tarefa");
+      showError("Erro ao deletar tarefa");
     } else {
-      showSuccess("Tarefa movida para a lixeira");
+      showSuccess("Tarefa movida para lixeira");
       onUpdate();
     }
+    setConfirmDelete(false);
   };
-
-  const priorityConfig = {
-    low: { color: "text-blue-500", label: "Baixa" },
-    medium: { color: "text-amber-500", label: "Média" },
-    high: { color: "text-rose-500", label: "Alta" },
-  };
-
-  const currentPriority = priorityConfig[task.priority as keyof typeof priorityConfig] || priorityConfig.medium;
-  const currentCategory = CATEGORIES[task.category || "personal"];
 
   return (
     <>
       <div
         className={cn(
-          "flex items-center gap-3 p-4 bg-card rounded-2xl shadow-sm border group transition-all hover:shadow-md hover:border-primary/20 animate-in fade-in slide-in-from-bottom-2 duration-300",
-          isOverdue
-            ? "border-rose-200 dark:border-rose-900/30 bg-rose-50/30 dark:bg-rose-900/5"
-            : "border-border"
+          "group relative flex items-start gap-3 rounded-2xl border border-white/8 bg-white/5 backdrop-blur-sm p-4 transition-all duration-200 hover:bg-white/8 hover:border-white/15",
+          isCompleted && "opacity-60"
         )}
       >
-        <Checkbox
-          checked={isCompleted}
-          onCheckedChange={toggleStatus}
-          className="h-6 w-6 rounded-full border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-        />
+        {/* Category color accent */}
+        <div className={cn("absolute left-0 top-4 bottom-4 w-1 rounded-full", catStyle.dot)} />
+
+        {/* Checkbox */}
+        <button
+          onClick={toggleStatus}
+          disabled={loading}
+          className={cn(
+            "mt-0.5 flex-shrink-0 h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all duration-200",
+            isCompleted
+              ? "bg-primary border-primary scale-95"
+              : "border-white/20 hover:border-primary/50 hover:bg-primary/10"
+          )}
+          aria-label={isCompleted ? "Reabrir tarefa" : "Concluir tarefa"}
+        >
+          {isCompleted && <Check className="h-3.5 w-3.5 text-white" />}
+        </button>
+
+        {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center flex-wrap gap-1.5 mb-0.5">
-            <p
+          <p
+            className={cn(
+              "text-sm font-medium leading-snug transition-all",
+              isCompleted ? "line-through text-muted-foreground" : "text-foreground"
+            )}
+          >
+            {task.title}
+          </p>
+
+          {/* Meta row */}
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            {/* Category badge */}
+            <span
               className={cn(
-                "text-base font-semibold truncate transition-all",
-                isCompleted
-                  ? "text-muted-foreground line-through opacity-60"
-                  : "text-foreground"
+                "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                catStyle.bg,
+                catStyle.text
               )}
             >
-              {task.title}
-            </p>
-            {currentCategory && (
-              <span className={cn("text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-md", currentCategory.color)}>
-                {currentCategory.label}
-              </span>
-            )}
-            {isOverdue && (
-              <span className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-tighter bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 px-1.5 py-0.5 rounded-md">
-                <AlertCircle className="h-2 w-2" />
-                Atrasado
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {dueDate && (
-              <div
+              <span className={cn("h-1.5 w-1.5 rounded-full", catStyle.dot)} />
+              {catStyle.label}
+            </span>
+
+            {/* Priority */}
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+              <Flag className={cn("h-3 w-3 fill-current", priStyle.color)} />
+              {priStyle.label}
+            </span>
+
+            {/* Due date */}
+            {task.due_date && (
+              <span
                 className={cn(
-                  "flex items-center text-[10px] font-medium uppercase tracking-wider",
-                  isOverdue ? "text-rose-500" : "text-muted-foreground"
+                  "inline-flex items-center gap-1 text-[10px] font-medium",
+                  isOverdue ? "text-rose-400" : isDueToday ? "text-amber-400" : "text-muted-foreground"
                 )}
               >
-                <Calendar className="h-3 w-3 mr-1" />
-                {format(dueDate, "dd/MM")}
-              </div>
+                <Calendar className="h-3 w-3" />
+                {isDueToday ? "Hoje" : format(new Date(task.due_date), "dd/MM")}
+                {isOverdue && " (atrasada)"}
+              </span>
             )}
-            <div className={cn("flex items-center text-[10px] font-bold uppercase tracking-wider", currentPriority.color)}>
-              <Flag className="h-3 w-3 mr-1 fill-current" />
-              {currentPriority.label}
-            </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsEditDialogOpen(true)}
-            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+            onClick={() => setConfirmDelete(true)}
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
           >
-            <Pencil className="h-4 w-4" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Mover para a lixeira?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  A tarefa{" "}
-                  <span className="font-semibold text-foreground">"{task.title}"</span>{" "}
-                  será movida para a lixeira.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={deleteTask}
-                  className="bg-destructive hover:bg-destructive/90 text-white"
-                >
-                  Mover para lixeira
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </div>
 
-      <EditTaskDialog
-        task={task}
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onUpdate={onUpdate}
-      />
+      {/* Confirm delete dialog */}
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mover para lixeira?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A tarefa &quot;{task.title}&quot; será movida para a lixeira.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteTask}
+              className="bg-destructive hover:bg-destructive/90 text-white"
+            >
+              Mover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

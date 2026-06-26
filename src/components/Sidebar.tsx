@@ -1,20 +1,10 @@
 "use client";
 
 import React from "react";
-import {
-  LayoutDashboard,
-  ListTodo,
-  Trash2,
-  LogOut,
-  Moon,
-  Sun,
-  X,
-  ListChecks,
-  Menu,
-} from "lucide-react";
-import { useTheme } from "next-themes";
+import { ListTodo, Trash2, X, LogOut, PanelLeftClose, PanelLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { showSuccess, showError } from "@/utils/toast";
+import { showSuccess } from "@/utils/toast";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -27,9 +17,8 @@ interface SidebarProps {
 }
 
 /**
- * Componente de navegação lateral (sidebar).
- * Desktop: sidebar fixa de 260px.
- * Mobile: overlay com backdrop escuro e botão de fechar.
+ * Sidebar com navegação entre dashboard e lixeira.
+ * Design glassmorphism com tema escuro.
  */
 const Sidebar = ({
   isOpen,
@@ -39,138 +28,92 @@ const Sidebar = ({
   currentView,
   onViewChange,
 }: SidebarProps) => {
-  const { theme, setTheme } = useTheme();
-
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      showError("Erro ao sair");
-    } else {
-      showSuccess("Até logo!");
-    }
-  };
-
-  const handleViewChange = (view: "dashboard" | "trash") => {
-    onViewChange(view);
-    if (!isDesktop) onClose();
+    await supabase.auth.signOut();
+    showSuccess("Logout realizado!");
   };
 
   const navItems = [
-    {
-      id: "dashboard" as const,
-      label: "Dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      id: "trash" as const,
-      label: "Lixeira",
-      icon: Trash2,
-    },
+    { id: "dashboard" as const, label: "Tarefas", icon: ListTodo },
+    { id: "trash" as const, label: "Lixeira", icon: Trash2 },
   ];
 
   return (
     <>
-      {/* Mobile hamburger button */}
+      {/* Mobile toggle button */}
       {!isDesktop && (
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onToggle}
-          className="fixed top-4 left-4 z-50 p-2.5 bg-primary text-primary-foreground rounded-xl shadow-lg shadow-primary/20 lg:hidden"
-          aria-label="Menu"
+          className="fixed top-4 left-4 z-50 h-10 w-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-white hover:bg-white/15"
         >
-          <Menu className="h-5 w-5" />
-        </button>
+          {isOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
+        </Button>
       )}
 
-      {/* Backdrop overlay for mobile */}
-      {!isDesktop && isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
-          onClick={onClose}
-        />
+      {/* Overlay for mobile */}
+      {isOpen && !isDesktop && (
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       )}
 
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 h-full w-[260px] flex flex-col transition-transform duration-300 ease-in-out",
-          "bg-sidebar text-sidebar-foreground",
-          isDesktop
-            ? "translate-x-0"
-            : isOpen
-            ? "translate-x-0"
-            : "-translate-x-full"
+          "fixed top-0 left-0 z-50 h-full w-[260px] flex flex-col transition-transform duration-300",
+          "bg-slate-900/80 backdrop-blur-xl border-r border-white/8",
+          isDesktop ? "translate-x-0" : isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary p-2 rounded-xl text-primary-foreground shadow-lg shadow-primary/20">
-              <ListChecks className="h-5 w-5" />
+        <div className="flex items-center justify-between p-5 border-b border-white/8">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/20">
+              <ListTodo className="h-4.5 w-4.5 text-primary" />
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-white leading-tight">
-                FlowTasks
-              </h1>
-              <p className="text-[10px] text-sidebar-foreground/70 font-medium uppercase tracking-wider">
-                Produtividade
-              </p>
-            </div>
+            <span className="text-base font-bold text-white">FlowTasks</span>
           </div>
           {!isDesktop && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/70 hover:text-white transition-colors"
-              aria-label="Fechar menu"
+              className="h-8 w-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"
             >
-              <X className="h-5 w-5" />
-            </button>
+              <X className="h-4 w-4" />
+            </Button>
           )}
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentView === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleViewChange(item.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </button>
-            );
-          })}
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                onViewChange(item.id);
+                if (!isDesktop) onClose();
+              }}
+              className={cn(
+                "w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
+                currentView === item.id
+                  ? "bg-primary/15 text-primary border border-primary/20"
+                  : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent"
+              )}
+            >
+              <item.icon className="h-4.5 w-4.5" />
+              {item.label}
+            </button>
+          ))}
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-sidebar-border space-y-1">
-          {/* Theme toggle */}
-          <button
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white transition-all duration-200"
-          >
-            {theme === "light" ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-            {theme === "light" ? "Modo Escuro" : "Modo Claro"}
-          </button>
-
-          {/* Logout */}
+        <div className="p-3 border-t border-white/8">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-sidebar-foreground/80 hover:bg-destructive hover:text-white transition-all duration-200"
+            className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all duration-200"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-4.5 w-4.5" />
             Sair
           </button>
         </div>

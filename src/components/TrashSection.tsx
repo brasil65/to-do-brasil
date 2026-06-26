@@ -1,74 +1,50 @@
-"use client";
-
-import React, { useState } from "react";
+import React from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import TrashItem from "@/components/TrashItem";
 
-interface DeletedTask {
+interface Task {
   id: string;
   title: string;
+  status: string;
+  due_date: string | null;
+  priority: string;
+  category?: string;
+  deleted_at: string | null;
 }
 
 interface TrashSectionProps {
-  deletedTasks: DeletedTask[];
+  deletedTasks: Task[];
   onRefresh: () => void;
   onEmptyTrash: () => void;
 }
 
 /**
- * Seção colapsável "Lixeira" que lista tarefas excluídas com ações de restaurar ou excluir permanentemente.
- * Tema azul nos elementos visuais.
+ * Seção de lixeira com lista de tarefas deletadas
+ * e botão para esvaziar.
  */
 const TrashSection = ({ deletedTasks, onRefresh, onEmptyTrash }: TrashSectionProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-
   return (
-    <section className="space-y-4 animate-in fade-in duration-500">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-1 w-full group"
-      >
-        <div className="h-4 w-1 bg-primary/50 rounded-full" />
-        <h2 className="text-xs font-black text-muted-foreground uppercase tracking-widest flex-1 text-left">
-          Lixeira
-        </h2>
-        <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-          {deletedTasks.length}
+    <section className="space-y-3 pt-4 border-t border-white/8">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          Lixeira ({deletedTasks.length})
         </span>
-        {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-        )}
-      </button>
-
-      {isOpen && (
-        <div className="space-y-2">
-          {deletedTasks.length > 1 && (
-            <div className="flex justify-end px-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onEmptyTrash}
-                className="h-7 text-[10px] font-bold text-destructive hover:text-destructive hover:bg-destructive/10 uppercase tracking-wider px-2"
-              >
-                <Trash2 className="h-3 w-3 mr-1" />
-                Esvaziar Lixeira
-              </Button>
-            </div>
-          )}
-          {deletedTasks.map((task) => (
-            <TrashItem
-              key={task.id}
-              id={task.id}
-              title={task.title}
-              onRestore={onRefresh}
-              onPermanentDelete={onRefresh}
-            />
-          ))}
-        </div>
-      )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onEmptyTrash}
+          className="h-7 text-[10px] font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 uppercase tracking-wider px-2 rounded-lg"
+        >
+          <Trash2 className="h-3 w-3 mr-1" />
+          Esvaziar
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {deletedTasks.map((task) => (
+          <TrashItem key={task.id} task={task} onUpdate={onRefresh} />
+        ))}
+      </div>
     </section>
   );
 };

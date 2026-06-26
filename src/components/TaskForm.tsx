@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Calendar as CalendarIcon, Loader2, Flag, Tag } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Loader2, Flag, Tag, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { showSuccess, showError } from "@/utils/toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -23,15 +23,15 @@ interface TaskFormProps {
 }
 
 const CATEGORIES = [
-  { id: "work", label: "Trabalho", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  { id: "personal", label: "Pessoal", color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" },
-  { id: "health", label: "Saúde", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  { id: "urgent", label: "Urgente", color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" },
+  { id: "work", label: "Trabalho", color: "bg-blue-500" },
+  { id: "personal", label: "Pessoal", color: "bg-violet-500" },
+  { id: "health", label: "Saúde", color: "bg-emerald-500" },
+  { id: "urgent", label: "Urgente", color: "bg-rose-500" },
 ];
 
 /**
- * Formulário de criação de tarefa com botão de adicionar, data, prioridade e categoria.
- * Foco e botões em tons azuis.
+ * Barra flutuante de adição de tarefa com design pill-shaped.
+ * Opções de data, prioridade e categoria integradas de forma compacta.
  */
 const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
   const [title, setTitle] = useState("");
@@ -39,6 +39,7 @@ const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
   const [priority, setPriority] = useState("medium");
   const [category, setCategory] = useState("personal");
   const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,85 +77,139 @@ const TaskForm = ({ onTaskCreated }: TaskFormProps) => {
       setTitle("");
       setDueDate(undefined);
       setPriority("medium");
+      setExpanded(false);
       onTaskCreated();
     }
   };
 
-  const priorityColors = {
-    low: "text-blue-500",
-    medium: "text-amber-500",
-    high: "text-rose-500",
+  const priorityConfig: Record<string, { label: string; color: string }> = {
+    low: { label: "Baixa", color: "text-blue-400" },
+    medium: { label: "Média", color: "text-amber-400" },
+    high: { label: "Alta", color: "text-rose-400" },
   };
 
+  const categoryColor = CATEGORIES.find((c) => c.id === category)?.color || "bg-violet-500";
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 p-1">
-      <div className="flex gap-2">
-        <Input
-          placeholder="O que você precisa fazer?"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="flex-1 rounded-xl bg-card border-border shadow-sm h-12 px-4 focus-visible:ring-2 focus-visible:ring-primary/20"
-        />
-        <Button
-          type="submit"
-          disabled={loading || !title.trim()}
-          className="rounded-xl h-12 w-12 p-0 shadow-lg shadow-primary/20"
-        >
-          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-6 w-6" />}
-        </Button>
-      </div>
+    <form onSubmit={handleSubmit} className="w-full">
+      <div
+        className={cn(
+          "relative flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-4 transition-all duration-300",
+          expanded && "ring-2 ring-primary/30 bg-white/10"
+        )}
+      >
+        {/* Main input row */}
+        <div className="flex items-center gap-3">
+          <div className={cn("h-8 w-1 rounded-full transition-colors", categoryColor)} />
+          <Input
+            placeholder="Adicionar nova tarefa..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onFocus={() => setExpanded(true)}
+            className="flex-1 border-0 bg-transparent h-10 px-0 text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
+          />
+          <Button
+            type="submit"
+            disabled={loading || !title.trim()}
+            size="icon"
+            className="rounded-xl h-10 w-10 p-0 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all duration-200 hover:scale-105 active:scale-95"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-5 w-5" />}
+          </Button>
+        </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "h-8 rounded-full text-[10px] font-bold uppercase tracking-wider px-3",
-                dueDate
-                  ? "bg-primary/10 text-primary hover:bg-primary/20"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-              {dueDate ? format(dueDate, "dd/MM") : "Data"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
-          </PopoverContent>
-        </Popover>
+        {/* Expanded options */}
+        {expanded && (
+          <div className="flex flex-wrap items-center gap-2 pt-1 animate-fade-in">
+            <div className="h-4 w-px bg-white/10 mr-1" />
 
-        <Select value={priority} onValueChange={setPriority}>
-          <SelectTrigger className="h-8 w-auto rounded-full text-[10px] font-bold uppercase tracking-wider px-3 border-none bg-transparent hover:bg-muted shadow-none focus:ring-0">
-            <div className="flex items-center gap-1.5">
-              <Flag className={cn("h-3 w-3 fill-current", priorityColors[priority as keyof typeof priorityColors])} />
-              <SelectValue placeholder="Prioridade" />
-            </div>
-          </SelectTrigger>
-          <SelectContent className="rounded-xl">
-            <SelectItem value="low" className="text-xs">Baixa</SelectItem>
-            <SelectItem value="medium" className="text-xs">Média</SelectItem>
-            <SelectItem value="high" className="text-xs">Alta</SelectItem>
-          </SelectContent>
-        </Select>
+            {/* Date picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 rounded-lg text-xs font-medium px-3 gap-1.5 transition-colors",
+                    dueDate
+                      ? "bg-primary/15 text-primary hover:bg-primary/25"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  )}
+                >
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {dueDate ? format(dueDate, "dd/MM") : "Data"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
+              </PopoverContent>
+            </Popover>
 
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="h-8 w-auto rounded-full text-[10px] font-bold uppercase tracking-wider px-3 border-none bg-transparent hover:bg-muted shadow-none focus:ring-0">
-            <div className="flex items-center gap-1.5">
-              <Tag className="h-3 w-3 text-muted-foreground" />
-              <SelectValue placeholder="Categoria" />
-            </div>
-          </SelectTrigger>
-          <SelectContent className="rounded-xl">
-            {CATEGORIES.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id} className="text-xs">
-                {cat.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            {/* Priority */}
+            <Select value={priority} onValueChange={setPriority}>
+              <SelectTrigger className="h-8 w-auto rounded-lg text-xs font-medium px-3 border-0 bg-transparent hover:bg-white/5 gap-1.5 focus:ring-0">
+                <div className="flex items-center gap-1.5">
+                  <Flag className={cn("h-3.5 w-3.5 fill-current", priorityConfig[priority]?.color)} />
+                  <SelectValue placeholder="Prioridade" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="low" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-blue-400" />
+                    Baixa
+                  </span>
+                </SelectItem>
+                <SelectItem value="medium" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                    Média
+                  </span>
+                </SelectItem>
+                <SelectItem value="high" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-rose-400" />
+                    Alta
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Category */}
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="h-8 w-auto rounded-lg text-xs font-medium px-3 border-0 bg-transparent hover:bg-white/5 gap-1.5 focus:ring-0">
+                <div className="flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Categoria" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                {CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id} className="text-xs">
+                    <span className="flex items-center gap-2">
+                      <span className={cn("h-2 w-2 rounded-full", cat.color)} />
+                      {cat.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Clear date */}
+            {dueDate && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setDueDate(undefined)}
+                className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground hover:bg-white/5"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </form>
   );
