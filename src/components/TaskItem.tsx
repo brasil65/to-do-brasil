@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import EditTaskDialog from "@/components/EditTaskDialog";
 
 interface Task {
   id: string;
@@ -48,11 +49,12 @@ const PRIORITY_CONFIG: Record<string, { color: string; label: string }> = {
 
 /**
  * Card de tarefa com design moderno, cores por categoria,
- * indicador de prioridade e ações de completar/deletar.
+ * indicador de prioridade e ações de completar/editar/deletar.
  */
 const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
   const [loading, setLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const catStyle = CATEGORY_STYLES[task.category || "personal"] || CATEGORY_STYLES.personal;
   const priStyle = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
@@ -171,13 +173,31 @@ const TaskItem = ({ task, onUpdate }: TaskItemProps) => {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setEditOpen(true)}
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10"
+            aria-label="Editar tarefa"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setConfirmDelete(true)}
             className="h-8 w-8 rounded-lg text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
+            aria-label="Deletar tarefa"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
+
+      {/* Edit dialog */}
+      <EditTaskDialog
+        task={task}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onUpdate={onUpdate}
+      />
 
       {/* Confirm delete dialog */}
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
